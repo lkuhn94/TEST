@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>All-in-One Resort POS + HMS + HR Dashboard</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #f4f4f4; }
+    header { background: #2f3b52; color: white; padding: 1rem 2rem; position: sticky; top: 0; z-index: 1000; display: flex; justify-content: space-between; align-items: center; height: 60px; }
+    .sidebar { position: fixed; top: 60px; left: 0; width: 220px; height: calc(100vh - 60px); background-color: #1f2937; color: white; padding-top: 2rem; overflow-y: auto; }
+    .sidebar ul { list-style: none; padding: 0; margin: 0; }
+    .sidebar li { padding: 1rem 2rem; cursor: pointer; transition: background 0.3s; }
+    .sidebar li:hover { background-color: #374151; }
+    .main-content { margin-left: 220px; padding: 2rem; padding-top: 80px; }
+    .section { display: none; }
+    .section.active { display: block; }
+    input, button, select, textarea { margin: 0.5rem 0.25rem; padding: 0.5rem; border-radius: 4px; border: 1px solid #ccc; }
+    button { background: #2f3b52; color: white; border: none; cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; background: white; border-radius: 8px; overflow: hidden; }
+    th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+    .section-box { background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); margin-bottom: 1rem; }
+    .room-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; margin-top: 1rem; }
+    .room-cell { background: white; padding: 0.5rem; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); text-align: center; border: 2px solid #ccc; cursor: move; }
+    .clean { border-color: green; }
+    .occupied { border-color: red; }
+    .maintenance { border-color: orange; }
+    .room-filter { margin-bottom: 1rem; }
+    .menu-item { background-color: white; border: 1px solid #ccc; padding: 0.5rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; cursor: pointer; border-radius: 5px; }
+    .receipt { margin-top: 1rem; background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+    .pay-btn { margin-right: 0.5rem; }
+    .layout-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-top: 1rem; }
+    .table-cell { background: white; padding: 0.75rem; border: 1px solid #ccc; text-align: center; border-radius: 6px; cursor: move; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>All-in-One Resort POS + HMS + HR Dashboard</h1>
+  <div><i class="fas fa-hotel"></i> Resort Suite</div>
+</header>
+<div class="sidebar">
+  <ul>
+    <li onclick="showSection('dashboard')">Dashboard</li>
+    <li onclick="showSection('pos')">POS</li>
+    <li onclick="showSection('reservations')">Reservations</li>
+    <li onclick="showSection('rooms')">Room Mgmt</li>
+    <li onclick="showSection('tablemap')">Table Layout</li>
+    <li onclick="showSection('hr')">HR</li>
+    <li onclick="showSection('reports')">Reports</li>
+  </ul>
+</div>
+<div class="main-content">
+  <div id="dashboard" class="section active">
+    <h2>Welcome</h2>
+    <p>Use the navigation to access each module.</p>
+  </div>
+
+  <div id="pos" class="section">
+    <div class="section-box">
+      <h3>POS – Restaurant Ordering</h3>
+      <div class="menu-item" onclick="addToReceipt('Burger', 12)"><strong>Burger</strong><span>$12</span></div>
+      <div class="menu-item" onclick="addToReceipt('Pizza', 15)"><strong>Pizza</strong><span>$15</span></div>
+      <div class="menu-item" onclick="addToReceipt('Wine', 8)"><strong>Wine</strong><span>$8</span></div>
+      <div class="menu-item" onclick="addToReceipt('Fries', 5)"><strong>Fries</strong><span>$5</span></div>
+      <div class="receipt">
+        <h4>Receipt</h4>
+        <ul id="receiptList"></ul>
+        <p><strong>Total: $<span id="total">0</span></strong></p>
+        <div>
+          <button class="pay-btn" onclick="pay('Room Charge')">Room Charge</button>
+          <button class="pay-btn" onclick="pay('Cash')">Cash</button>
+          <button class="pay-btn" onclick="pay('Card')">Card</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="rooms" class="section">
+    <div class="section-box">
+      <h3>Room Grid – Cloudbeds Style</h3>
+      <div class="room-filter">
+        <label for="roomType">Filter by Type:</label>
+        <select id="roomType" onchange="filterRooms()">
+          <option value="all">All</option>
+          <option value="standard">Standard</option>
+          <option value="suite">Suite</option>
+          <option value="deluxe">Deluxe</option>
+        </select>
+      </div>
+      <div class="room-grid" id="roomGrid">
+        <div class="room-cell clean" data-type="standard" draggable="true" ondragstart="drag(event)" id="room101">101<br><small>Clean</small></div>
+        <div class="room-cell occupied" data-type="suite" draggable="true" ondragstart="drag(event)" id="room102">102<br><small>Occupied</small></div>
+        <div class="room-cell maintenance" data-type="deluxe" draggable="true" ondragstart="drag(event)" id="room103">103<br><small>Out of Order</small></div>
+        <div class="room-cell clean" data-type="standard" draggable="true" ondragstart="drag(event)" id="room104">104<br><small>Clean</small></div>
+        <div class="room-cell occupied" data-type="suite" draggable="true" ondragstart="drag(event)" id="room105">105<br><small>Occupied</small></div>
+        <div class="room-cell clean" data-type="deluxe" draggable="true" ondragstart="drag(event)" id="room106">106<br><small>Clean</small></div>
+        <div class="room-cell maintenance" data-type="suite" draggable="true" ondragstart="drag(event)" id="room107">107<br><small>Maintenance</small></div>
+        <div class="room-cell clean" data-type="standard" draggable="true" ondragstart="drag(event)" id="room108">108<br><small>Ready</small></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tablemap" class="section">
+    <div class="section-box">
+      <h3>Table Mapping & Layout Designer</h3>
+      <div class="layout-grid" id="tableLayout">
+        <div class="table-cell" draggable="true" ondragstart="drag(event)" id="table1">Table 1</div>
+        <div class="table-cell" draggable="true" ondragstart="drag(event)" id="table2">Table 2</div>
+        <div class="table-cell" draggable="true" ondragstart="drag(event)" id="table3">Table 3</div>
+        <div class="table-cell" draggable="true" ondragstart="drag(event)" id="table4">Table 4</div>
+        <div class="table-cell" draggable="true" ondragstart="drag(event)" id="table5">Table 5</div>
+        <div class="table-cell" draggable="true" ondragstart="drag(event)" id="table6">Table 6</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="hr" class="section">
+    <div class="section-box">
+      <h3>HR – Staff Directory</h3>
+      <input type="text" id="staffName" placeholder="Name">
+      <input type="text" id="staffRole" placeholder="Role">
+      <button onclick="addStaff()">Add Staff</button>
+      <ul id="staffList"></ul>
+    </div>
+    <div class="section-box">
+      <h3>Payroll Overview</h3>
+      <table>
+        <thead>
+          <tr><th>Name</th><th>Hours</th><th>Rate</th><th>Total Pay</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Sarah Lee</td><td>40</td><td>$20</td><td>$800</td></tr>
+          <tr><td>Daniel Cruz</td><td>38</td><td>$18</td><td>$684</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="section-box">
+      <h3>Benefits Summary</h3>
+      <table>
+        <thead>
+          <tr><th>Employee</th><th>Health Plan</th><th>401(k)</th><th>Insurance</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Sarah Lee</td><td>Gold Plan</td><td>5%</td><td>Yes</td></tr>
+          <tr><td>Daniel Cruz</td><td>Silver Plan</td><td>4%</td><td>Yes</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<script>
+  function showSection(id) {
+    document.querySelectorAll('.section').forEach(section => section.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+  function filterRooms() {
+    const selected = document.getElementById('roomType').value;
+    document.querySelectorAll('.room-cell').forEach(cell => {
+      cell.style.display = (selected === 'all' || cell.dataset.type === selected) ? 'block' : 'none';
+    });
+  }
+  function drag(ev) {
+    ev.dataTransfer.setData("text", ev.target.id);
+  }
+  function allowDrop(ev) {
+    ev.preventDefault();
+  }
+  function drop(ev) {
+    ev.preventDefault();
+    const data = ev.dataTransfer.getData("text");
+    const dragged = document.getElementById(data);
+    const target = ev.target.closest('.table-cell') || ev.target.closest('.room-cell');
+    if (target && target !== dragged) {
+      const container = target.parentNode;
+      container.insertBefore(dragged, target);
+    }
+  }
+  function addStaff() {
+    const name = document.getElementById('staffName').value;
+    const role = document.getElementById('staffRole').value;
+    if (!name || !role) return;
+    const li = document.createElement('li');
+    li.innerHTML = `${name} — ${role} <button onclick="this.parentElement.remove()">Remove</button>`;
+    document.getElementById('staffList').appendChild(li);
+    document.getElementById('staffName').value = '';
+    document.getElementById('staffRole').value = '';
+  }
+  let total = 0;
+  function addToReceipt(item, price) {
+    const li = document.createElement('li');
+    li.textContent = `${item} - $${price}`;
+    document.getElementById('receiptList').appendChild(li);
+    total += price;
+    document.getElementById('total').textContent = total;
+  }
+  function pay(method) {
+    alert(`Paid $${total} by ${method}`);
+    document.getElementById('receiptList').innerHTML = '';
+    document.getElementById('total').textContent = 0;
+    total = 0;
+  }
+  document.getElementById('tableLayout').addEventListener('dragover', allowDrop);
+  document.getElementById('tableLayout').addEventListener('drop', drop);
+</script>
+</body>
+</html>
